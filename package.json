@@ -1,6 +1,6 @@
 {
   "name": "primus-client-webpack-plugin",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Build client side primus script and add to build assets",
   "main": "index.js",
   "scripts": {},
@@ -24,7 +24,7 @@
     "uglify-js": "^2.8.7"
   },
   "peerDependencies": {
-    "primus": "^6.1.0",
+    "primus": "^7.2.2",
     "webpack": "^3.0.0"
   }
 }
