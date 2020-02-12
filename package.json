@@ -23,10 +23,12 @@
   },
   "homepage": "https://github.com/kkemple/primus-webpack-plugin#readme",
   "dependencies": {
-    "uglify-js": "^2.8.7"
+    "safe-require": "^1.0.3"
   },
   "peerDependencies": {
-    "primus": "^6.1.0",
-    "webpack": "^2.0.0"
+    "webpack": "^4.0.0",
+    "html-webpack-plugin": "^3.2.0",
+    "primus": "^7.1.0",
+    "terser": "^4.6.3"
   }
 }

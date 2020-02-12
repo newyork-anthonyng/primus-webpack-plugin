@@ -1,7 +1,8 @@
 const EventEmitter = require('events');
 const assert = require('assert');
 const Primus = require('primus');
-const uglify = require('uglify-js');
+const Terser = require('safe-require')('terser');
+const HtmlWebpackPlugin = require('safe-require')('html-webpack-plugin');
 
 class PrimusWebpackPlugin {
   constructor(options) {
@@ -17,7 +18,7 @@ class PrimusWebpackPlugin {
   }
 
   apply(compiler) {
-    compiler.plugin('emit', (compilation, cb) => {
+    compiler.hooks.emit.tapAsync('PrimusWebpackPlugin', (compilation, cb) => {
       const primus = new Primus(new EventEmitter(), this.options.primusOptions);
 
       if (this.options.primusOptions.plugins) {
@@ -34,17 +35,18 @@ class PrimusWebpackPlugin {
         '[hash]',
         compilation.hash
       );
+
       const source = this.options.minify
-        ? uglify.minify(clientLib, { fromString: true })
+        ? Terser.minify(clientLib)
         : { code: clientLib };
 
+      if (!source || !source.code) {
+        console.warn('PrimusWebpackPlugin: no source was produced by Primus, check minify settings etc.');
+      }
+
       compilation.assets[filename] = {
-        source() {
-          return source.code;
-        },
-        size() {
-          return source.code.length;
-        },
+        source: () => source.code,
+        size: () => source.code.length,
       };
 
       primus.destroy();
@@ -52,35 +54,36 @@ class PrimusWebpackPlugin {
     });
 
     // if HtmlWebpackPlugin is being utilized, add our script to file
-    compiler.plugin('compilation', compilation => {
-      compilation.plugin(
-        'html-webpack-plugin-before-html-processing',
-        (htmlPluginData, cb) => {
-          const filename = this.options.filename.replace(
-            '[hash]',
-            compilation.hash
-          );
-          const scriptTag = `<script type="text/javascript" src="/${filename}"></script>`;
+    if (HtmlWebpackPlugin) {
+      compiler.hooks.compilation.tap('PrimusWebpackPlugin', compilation => {
+        HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync('PrimusWebpackPlugin',
+          (htmlPluginData, cb) => {
+            const filename = this.options.filename.replace(
+              '[hash]',
+              compilation.hash
+            );
+            const scriptTag = `<script type="text/javascript" src="/${filename}"></script>`;
 
-          if (
-            !htmlPluginData.plugin.options.inject ||
-            htmlPluginData.plugin.options.inject === 'head'
-          ) {
-            htmlPluginData.html = htmlPluginData.html.replace(
-              '</head>',
-              scriptTag + '</head>'
-            );
-          } else {
-            htmlPluginData.html = htmlPluginData.html.replace(
-              '</body>',
-              scriptTag + '</body>'
-            );
+            if (
+              !htmlPluginData.plugin.options.inject ||
+              htmlPluginData.plugin.options.inject === 'head'
+            ) {
+              htmlPluginData.html = htmlPluginData.html.replace(
+                '</head>',
+                scriptTag + '</head>'
+              );
+            } else {
+              htmlPluginData.html = htmlPluginData.html.replace(
+                '</body>',
+                scriptTag + '</body>'
+              );
+            }
+
+            cb(null, htmlPluginData);
           }
-
-          cb(null, htmlPluginData);
-        }
-      );
-    });
+        );
+      });
+    }
   }
 }
 
